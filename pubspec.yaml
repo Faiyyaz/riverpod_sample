@@ -1,0 +1,35 @@
+name: twitter
+description: A new Flutter project.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  #UI
+  cupertino_icons: ^1.0.5
+  flutter_svg: ^2.0.5
+
+  #Riverpod
+  flutter_riverpod: ^2.3.6
+  fpdart: ^0.6.0
+  stack_trace: ^1.11.0
+
+  #Fireabse
+  firebase_core: ^2.13.0
+  firebase_auth: ^4.6.1
+  cloud_firestore: ^4.7.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+     - assets/svgs/
