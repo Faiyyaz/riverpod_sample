@@ -2,11 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../apis/tweet_api.dart';
 import '../../../features/auth/controller/auth_controller.dart';
-import '../../../models/create_tweet_response.dart';
 import '../../../models/tweet_model.dart';
 
 final tweetControllerProvider =
-    AsyncNotifierProvider<TweetController, CreateTweetResponse?>(() {
+    AsyncNotifierProvider<TweetController, bool>(() {
   return TweetController();
 });
 
@@ -18,11 +17,10 @@ final tweetsStreamProvider = StreamProvider((ref) {
 // A class which exposes a state that can change over time.
 // Difference between StateNotifier and Notifier is notifier doesn't give ref
 // But enable us to get ref in custom functions
-class TweetController extends AsyncNotifier<CreateTweetResponse?> {
-  Future<CreateTweetResponse?> shareTweet({
+class TweetController extends AsyncNotifier<bool> {
+  Future<void> shareTweet({
     required String tweet,
   }) async {
-    CreateTweetResponse? createTweetResponse;
     state = const AsyncLoading();
     if (tweet.isNotEmpty) {
       final currentUser = ref.watch(currentUserAccountProvider).value;
@@ -37,34 +35,23 @@ class TweetController extends AsyncNotifier<CreateTweetResponse?> {
           tweetType: 'text',
         );
         final TweetAPI tweetAPI = ref.read(tweetAPIProvider);
-        state = await AsyncValue.guard(() async {
-          final res = await tweetAPI.shareTweet(
-            tweetModel: tweetModel,
-          );
-          createTweetResponse = res.fold(
-            (l) => CreateTweetResponse(
-              success: false,
-              error: l.message,
-            ),
-            (r) => const CreateTweetResponse(
-              success: true,
-              error: null,
-            ),
-          );
+        final res = await tweetAPI.shareTweet(
+          tweetModel: tweetModel,
+        );
 
-          return createTweetResponse;
-        });
+        res.fold(
+          (l) => state = AsyncError(l.message, l.stackTrace),
+          (r) => state = const AsyncData(
+            true,
+          ),
+        );
       }
     } else {
-      state = await AsyncValue.guard(() async {
-        createTweetResponse = const CreateTweetResponse(
-          success: false,
-          error: 'Please enter text',
-        );
-        return createTweetResponse;
-      });
+      state = AsyncError(
+        'Please enter text',
+        StackTrace.current,
+      );
     }
-    return createTweetResponse;
   }
 
   Stream<List<TweetModel?>?> getTweets() {
@@ -74,46 +61,34 @@ class TweetController extends AsyncNotifier<CreateTweetResponse?> {
   }
 
   @override
-  CreateTweetResponse? build() {
-    return null;
+  bool build() {
+    return false;
   }
 
-  Future<CreateTweetResponse?> deleteTweet({
+  Future<void> deleteTweet({
     required String tweetId,
   }) async {
-    CreateTweetResponse? createTweetResponse;
     state = const AsyncLoading();
     if (tweetId.isNotEmpty) {
       final currentUser = ref.watch(currentUserAccountProvider).value;
       if (currentUser != null) {
         final TweetAPI tweetAPI = ref.read(tweetAPIProvider);
-        state = await AsyncValue.guard(() async {
-          final res = await tweetAPI.deleteTweet(
-            tweetId: tweetId,
-          );
-          createTweetResponse = res.fold(
-            (l) => CreateTweetResponse(
-              success: false,
-              error: l.message,
-            ),
-            (r) => const CreateTweetResponse(
-              success: true,
-              error: null,
-            ),
-          );
+        final res = await tweetAPI.deleteTweet(
+          tweetId: tweetId,
+        );
 
-          return createTweetResponse;
-        });
+        res.fold(
+          (l) => state = AsyncError(l.message, l.stackTrace),
+          (r) => state = const AsyncData(
+            true,
+          ),
+        );
       }
     } else {
-      state = await AsyncValue.guard(() async {
-        createTweetResponse = const CreateTweetResponse(
-          success: false,
-          error: 'Please enter text',
-        );
-        return createTweetResponse;
-      });
+      state = AsyncError(
+        'Please send tweet id',
+        StackTrace.current,
+      );
     }
-    return createTweetResponse;
   }
 }

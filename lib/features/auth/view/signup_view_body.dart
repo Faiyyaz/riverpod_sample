@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../common/common.dart';
 import '../../../core/core.dart';
-import '../../../models/auth_response.dart';
 import '../../../theme/theme.dart';
 import '../controller/auth_controller.dart';
 import '../widgets/auth_field.dart';
@@ -31,27 +30,30 @@ class _SignUpViewBodyState extends ConsumerState<SignUpViewBody> {
 
   // .read Reads a provider without listening to it.
   Future<void> onSignUp() async {
-    AuthResponse? authResponse =
-        await ref.read(authControllerProvider.notifier).signUp(
-              email: emailController.text,
-              password: passwordController.text,
-            );
-    if (authResponse != null) {
-      if (authResponse.success) {
-        //TODO : Handled by auth changes
-      } else {
-        if (context.mounted) {
-          showSnackBar(context, authResponse.error ?? '');
-        }
-      }
-    }
+    await ref.read(authControllerProvider.notifier).signUp(
+          email: emailController.text,
+          password: passwordController.text,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(authControllerProvider);
+    /// Listen for errors
+    ref.listen<AsyncValue<void>>(
+      authControllerProvider,
+      (_, state) => state.when(
+        error: (Object error, StackTrace stackTrace) {
+          showSnackBar(context, error.toString());
+        },
+        data: (void data) {},
+        loading: () {},
+      ),
+    );
+
+    /// Listen for loading
+    final isLoading = ref.watch(authControllerProvider).isLoading;
     return Container(
-      child: state.isLoading
+      child: isLoading
           ? const Loader()
           : Center(
               child: SingleChildScrollView(

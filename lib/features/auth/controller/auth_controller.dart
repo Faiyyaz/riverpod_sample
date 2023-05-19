@@ -5,11 +5,9 @@ import 'package:fpdart/fpdart.dart';
 import '../../../apis/auth_api.dart';
 import '../../../apis/user_api.dart';
 import '../../../core/core.dart';
-import '../../../models/auth_response.dart';
 import '../../../models/user_model.dart';
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, AuthResponse?>(() {
+final authControllerProvider = AsyncNotifierProvider<AuthController, bool>(() {
   return AuthController();
 });
 
@@ -50,7 +48,7 @@ final userDetailsProvider =
 // A class which exposes a state that can change over time.
 // Difference between StateNotifier and Notifier is notifier doesn't give ref
 // But enable us to get ref in custom functions
-class AuthController extends AsyncNotifier<AuthResponse?> {
+class AuthController extends AsyncNotifier<bool> {
   Future<User?> currentUser() async {
     final AuthAPI authAPI = ref.watch(authAPIProvider);
     final account = await authAPI.currentUserAccount();
@@ -63,78 +61,55 @@ class AuthController extends AsyncNotifier<AuthResponse?> {
     return account;
   }
 
-  Future<AuthResponse?> signUp({
+  Future<void> signUp({
     required String email,
     required String password,
   }) async {
     final AuthAPI authAPI = ref.read(authAPIProvider);
-    AuthResponse? authResponse;
-    String? userId;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final Either<Failure, User?> response = await authAPI.signUp(
-        email: email,
-        password: password,
-      );
+    final Either<Failure, User?> response = await authAPI.signUp(
+      email: email,
+      password: password,
+    );
 
-      authResponse = response.fold(
-          (l) => AuthResponse(
-                success: false,
-                error: l.message,
-              ), (r) {
-        userId = r!.uid;
-        return const AuthResponse(
-          success: true,
-          error: null,
-        );
-      });
-
-      if (authResponse != null && authResponse!.success) {
-        authResponse = await createUserDocument(
+    response.fold(
+      (l) => state = AsyncError(l.message, l.stackTrace),
+      (r) async {
+        final value = await createUserDocument(
           email,
-          userId,
+          r!.uid,
         );
-      }
-
-      return authResponse;
-    });
-    return authResponse;
+        state = value;
+      },
+    );
   }
 
-  Future<AuthResponse?> login({
+  Future<void> login({
     required String email,
     required String password,
   }) async {
     final AuthAPI authAPI = ref.read(authAPIProvider);
-    AuthResponse? authResponse;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final Either<Failure, User?> response = await authAPI.login(
-        email: email,
-        password: password,
-      );
 
-      authResponse = response.fold(
-        (l) => AuthResponse(
-          success: false,
-          error: l.message,
-        ),
-        (r) => const AuthResponse(
-          success: true,
-          error: null,
-        ),
-      );
-      return authResponse;
-    });
-    return authResponse;
+    final Either<Failure, User?> response = await authAPI.login(
+      email: email,
+      password: password,
+    );
+
+    response.fold(
+      (l) => state = AsyncError(l.message, l.stackTrace),
+      (r) => state = const AsyncData(
+        true,
+      ),
+    );
   }
 
   @override
-  AuthResponse? build() {
-    return null;
+  bool build() {
+    return false;
   }
 
-  Future<AuthResponse?> createUserDocument(
+  Future<AsyncValue<bool>> createUserDocument(
     String email,
     String? userId,
   ) async {
@@ -152,14 +127,8 @@ class AuthController extends AsyncNotifier<AuthResponse?> {
     final UserAPI userAPI = ref.read(userAPIProvider);
     final res = await userAPI.saveUserData(userModel);
     return res.fold(
-      (l) => AuthResponse(
-        success: false,
-        error: l.message,
-      ),
-      (r) => const AuthResponse(
-        success: true,
-        error: null,
-      ),
+      (l) => AsyncError(l.message, l.stackTrace),
+      (r) => const AsyncData(true),
     );
   }
 

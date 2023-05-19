@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twitter/models/create_tweet_response.dart';
 
 import '../../../common/common.dart';
-import '../../../core/core.dart';
+import '../../../core/utils.dart';
 import '../../../theme/theme.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../controller/tweet_controller.dart';
@@ -32,7 +31,24 @@ class _CreateTweetScreenState extends ConsumerState<CreateTweetView> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider).value;
-    final state = ref.watch(tweetControllerProvider);
+
+    /// Listen for errors
+    ref.listen<AsyncValue<void>>(
+      tweetControllerProvider,
+      (_, state) => state.when(
+        error: (Object error, StackTrace stackTrace) {
+          showSnackBar(context, error.toString());
+        },
+        data: (void data) {
+          showSnackBar(context, 'Tweet Created Successfully');
+          Navigator.pop(context);
+        },
+        loading: () {},
+      ),
+    );
+
+    /// Listen for loading
+    final isLoading = ref.watch(tweetControllerProvider).isLoading;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -48,22 +64,9 @@ class _CreateTweetScreenState extends ConsumerState<CreateTweetView> {
         actions: [
           RoundedSmallButton(
             onTap: () async {
-              CreateTweetResponse? createTweetResponse =
-                  await ref.read(tweetControllerProvider.notifier).shareTweet(
-                        tweet: _tweetTextController.text,
-                      );
-              if (createTweetResponse != null) {
-                if (createTweetResponse.success) {
-                  if (context.mounted) {
-                    showSnackBar(context, 'Tweet Created Successfully');
-                    Navigator.pop(context);
-                  }
-                } else {
-                  if (context.mounted) {
-                    showSnackBar(context, createTweetResponse.error ?? '');
-                  }
-                }
-              }
+              await ref.read(tweetControllerProvider.notifier).shareTweet(
+                    tweet: _tweetTextController.text,
+                  );
             },
             label: 'Tweet',
             backgroundColor: Pallete.blueColor,
@@ -71,7 +74,7 @@ class _CreateTweetScreenState extends ConsumerState<CreateTweetView> {
           ),
         ],
       ),
-      body: state.isLoading || currentUser == null
+      body: isLoading || currentUser == null
           ? const Loader()
           : SafeArea(
               child: SingleChildScrollView(

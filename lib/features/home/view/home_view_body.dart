@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twitter/features/tweet/controller/tweet_controller.dart';
-import 'package:twitter/models/tweet_model.dart';
 
 import '../../../common/common.dart';
-import '../../../core/core.dart';
-import '../../../models/create_tweet_response.dart';
+import '../../../core/utils.dart';
+import '../../../features/tweet/controller/tweet_controller.dart';
+import '../../../models/tweet_model.dart';
 
 // ConsumerWidget gives us ref
 class HomeViewBody extends ConsumerWidget {
@@ -15,8 +14,21 @@ class HomeViewBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(tweetControllerProvider);
-    return state.isLoading
+    /// Listen for errors
+    ref.listen<AsyncValue<void>>(
+      tweetControllerProvider,
+      (_, state) => state.when(
+        error: (Object error, StackTrace stackTrace) {
+          showSnackBar(context, error.toString());
+        },
+        data: (void data) {},
+        loading: () {},
+      ),
+    );
+
+    /// Listen for loading
+    final isLoading = ref.watch(tweetControllerProvider).isLoading;
+    return isLoading
         ? const LoadingPage()
         : ref.watch(tweetsStreamProvider).when(
               data: (tweets) {
@@ -64,23 +76,8 @@ class HomeViewBody extends ConsumerWidget {
     WidgetRef ref,
     BuildContext context,
   ) async {
-    CreateTweetResponse? createTweetResponse =
-        await ref.read(tweetControllerProvider.notifier).deleteTweet(
-              tweetId: tweetModel!.id,
-            );
-    if (createTweetResponse != null) {
-      if (createTweetResponse.success) {
-        if (context.mounted) {
-          showSnackBar(context, 'Tweet Deleted Successfully');
-        }
-      } else {
-        if (context.mounted) {
-          showSnackBar(
-            context,
-            createTweetResponse.error ?? '',
-          );
-        }
-      }
-    }
+    await ref.read(tweetControllerProvider.notifier).deleteTweet(
+          tweetId: tweetModel!.id,
+        );
   }
 }

@@ -1,13 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/core.dart';
 
 import '../../../common/common.dart';
-import '../../../core/core.dart';
 import '../../../theme/theme.dart';
-import '../../home/view/home_view.dart';
 import '../controller/auth_controller.dart';
-import '../../../models/auth_response.dart';
 import '../view/signup_view.dart';
 import '../widgets/auth_field.dart';
 
@@ -32,33 +30,36 @@ class _LoginViewBodyState extends ConsumerState<LoginViewBody> {
 
   // .read Reads a provider without listening to it.
   Future<void> onLogin() async {
-    AuthResponse? authResponse =
-        await ref.read(authControllerProvider.notifier).login(
-              email: emailController.text,
-              password: passwordController.text,
-            );
-    if (authResponse != null) {
-      if (authResponse.success) {
-        if (context.mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            HomeView.route(),
-            (route) => false,
-          );
-        }
-      } else {
-        if (context.mounted) {
-          showSnackBar(context, authResponse.error ?? '');
-        }
-      }
-    }
+    await ref.read(authControllerProvider.notifier).login(
+          email: emailController.text,
+          password: passwordController.text,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(authControllerProvider);
+    /// Listen for errors
+    ref.listen<AsyncValue<void>>(
+      authControllerProvider,
+      (_, state) => state.when(
+        error: (Object error, StackTrace stackTrace) {
+          debugPrint('hello');
+          showSnackBar(context, error.toString());
+        },
+        data: (void data) {
+          debugPrint('data hello');
+        },
+        loading: () {
+          debugPrint('loading hello');
+        },
+      ),
+    );
+
+    /// Listen for loading
+    final isLoading = ref.watch(authControllerProvider).isLoading;
+
     return Container(
-      child: state.isLoading
+      child: isLoading
           ? const Loader()
           : Center(
               child: SingleChildScrollView(
